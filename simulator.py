@@ -39,6 +39,45 @@ class Field:
 
         plt.imsave(filename, as_image)
 
+    def sample(self, num_samples):
+        x_coords = self.rng.integers(
+            low=0, high=self.cells.shape[0], size=num_samples)
+        y_coords = self.rng.integers(
+            low=0, high=self.cells.shape[1], size=num_samples)
+        z_coords = self.rng.integers(
+            low=0, high=self.cells.shape[2], size=num_samples)
+
+        sample_sites = np.stack((x_coords, y_coords, z_coords), axis=1)
+        # print("Sample sites: ", sample_sites.shape)
+
+        sample_values = self.cells[x_coords, y_coords, z_coords]
+        # print("Sample values: ", sample_values)
+        return sample_values
+
+    def estimate_stock(self, num_samples):
+        samples = self.sample(num_samples)
+        total_gold_mass = np.sum(samples)
+        total_gold_volume = num_samples * 0.001
+        gold_density = total_gold_mass / total_gold_volume
+        total_gold_stock = gold_density * self.width * self.height * self.depth
+        return total_gold_stock
+
+    def histogram(self, num_samples, num_runs):
+        estimates = [self.estimate_stock(num_samples)
+                     for i in range(num_runs)]
+
+        counts, bins = np.histogram(estimates, bins=100)
+        counts = counts / num_runs
+
+        plt.figure(figsize=(8, 4))
+        plt.hist(bins[:-1], bins, weights=counts)
+        plt.axvline(x=10000, color='r', label='Truth')
+        plt.xlabel("Estimated Gold Stock (kg)")
+        plt.ylabel("Probability")
+        plt.title("Estimated Gold Stock")
+        # plt.show()
+        plt.savefig("gold_stock_histogram.png")
+
 
 def main():
     field_width_meters = 100
@@ -50,10 +89,10 @@ def main():
                   field_depth_meters, cell_resolution_meters)
 
     print("Field cells: ", field.cells.shape)
-
     field.add_gold_nuggets()
-
     field.save_as_image("gold_nuggets.png")
+
+    field.histogram(100, 1000)
 
 
 if __name__ == "__main__":
